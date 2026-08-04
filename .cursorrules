@@ -1,0 +1,111 @@
+# Cursor Rules for Ecommerce Admin
+
+## Layout Guidelines - ALWAYS Use Box Component
+
+- **ALWAYS use Box component from Material-UI (@mui/material/Box) for ALL layouts**
+- **NEVER use Grid component** - Use Box instead for all layout needs
+- This applies to:
+  - Forms (SimpleForm, Create, Edit forms)
+  - Page layouts
+  - Component layouts
+  - Any responsive layout structure
+  - All container and wrapper components
+
+## Box Component Usage Patterns
+
+### Basic Layout Structure
+
+Use Box with flexbox properties for responsive layouts:
+
+- Use `display: "flex"`, `flexDirection: "column"`, and `gap` for vertical layouts
+- Use `display: "flex"`, `flexWrap: "wrap"`, and `gap` for horizontal/multi-column layouts
+- Use responsive width properties for responsive behavior
+
+### Responsive Width Patterns
+
+- Two-column layout: `width: { xs: "100%", md: "calc(50% - 8px)" }`
+- Three-column layout: `width: { xs: "100%", md: "calc(33.333% - 11px)" }`
+- Four-column layout: `width: { xs: "100%", md: "calc(25% - 12px)" }`
+- Full-width: `width: "100%"`
+
+### Common Layout Examples
+
+#### Form Layout Example
+
+```tsx
+import Box from "@mui/material/Box";
+
+<SimpleForm>
+  <Box
+    sx={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    }}
+  >
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 2,
+      }}
+    >
+      <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+        <TextInput source="field1" fullWidth />
+      </Box>
+      <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+        <TextInput source="field2" fullWidth />
+      </Box>
+    </Box>
+    <Box sx={{ width: "100%" }}>
+      <TextInput source="field3" fullWidth multiline />
+    </Box>
+  </Box>
+</SimpleForm>;
+```
+
+#### General Component Layout Example
+
+```tsx
+import Box from "@mui/material/Box";
+
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    padding: 2,
+  }}
+>
+  <Box
+    sx={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 2,
+    }}
+  >
+    <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+      {/* Content */}
+    </Box>
+    <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+      {/* Content */}
+    </Box>
+  </Box>
+</Box>;
+```
+
+## Import Statement
+
+Always import Box as:
+
+```tsx
+import Box from "@mui/material/Box";
+```
+
+## Key Principles
+
+1. **Box is the primary layout component** - Use it for all layout needs
+2. **Flexbox is the layout method** - Use flexbox properties via sx prop
+3. **Responsive by default** - Always consider mobile-first responsive design
+4. **Gap for spacing** - Use `gap` property instead of margins for spacing between items
+5. **No Grid** - Never use Grid component, always use Box with flexbox
