@@ -12,7 +12,7 @@ export const createMainCategory = async (payload: CreateCategoryPayload) => {
 
 export const createChildCategory = async (payload: CreateCategoryPayload) => {
   const response = await apiClient.post<AxiosResponse<CreateCategoryResponse>>(
-    "/category/parent",
+    "/category/child",
     payload
   );
 
@@ -23,7 +23,7 @@ export const createSubChildCategory = async (
   payload: CreateCategoryPayload
 ) => {
   const response = await apiClient.post<AxiosResponse<CreateCategoryResponse>>(
-    "/category/parent",
+    "/category/subchild",
     payload
   );
 

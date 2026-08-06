@@ -1,5 +1,6 @@
-import { Admin, Resource } from "react-admin";
+import { Admin, CustomRoutes, Resource } from "react-admin";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Route } from "react-router-dom";
 import {
   axiosDataProvider,
   queryClient,
@@ -9,7 +10,11 @@ import {
   ProductEdit,
   ProductList,
 } from "./resources/products";
-import { CategoryCreate, CategoryList } from "./resources/categories";
+import {
+  CategoryCreate,
+  CategoryEdit,
+  CategoryList,
+} from "./resources/categories";
 import {
   BrandCreate,
   BrandEdit,
@@ -21,25 +26,38 @@ import {
   ColorImageList,
 } from "./resources/color-images";
 import { BadgeCreate, BadgeEdit, BadgeList } from "./resources/badges";
+import { UserEdit, UserList } from "./resources/users";
+import { OrderList, OrderShow } from "./resources/orders";
+import { CommentList } from "./resources/comments";
 import { AppLayout } from "./layouts/AppLayout";
 import { adminDarkTheme, adminLightTheme } from "./theme/adminTheme";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
+import { Dashboard } from "./pages/Dashboard";
+import { DeliveryCostSettings } from "./pages/DeliveryCostSettings";
+import { LoginPage } from "./pages/Login";
+import { authProvider } from "./providers/authProvider";
 
 function App() {
-  const dataProvider = axiosDataProvider(API_URL);
+  const dataProvider = axiosDataProvider();
 
   return (
     <QueryClientProvider client={queryClient}>
       <Admin
         title="Ecommerce Admin"
         dataProvider={dataProvider}
+        authProvider={authProvider}
+        loginPage={LoginPage}
         layout={AppLayout}
+        dashboard={Dashboard}
         lightTheme={adminLightTheme}
         darkTheme={adminDarkTheme}
         defaultTheme="light"
       >
-        <Resource name="category" list={CategoryList} create={CategoryCreate} />
+        <Resource
+          name="category"
+          list={CategoryList}
+          create={CategoryCreate}
+          edit={CategoryEdit}
+        />
         <Resource
           name="brand"
           list={BrandList}
@@ -64,6 +82,12 @@ function App() {
           create={ProductCreate}
           edit={ProductEdit}
         />
+        <Resource name="order" list={OrderList} show={OrderShow} />
+        <Resource name="users" list={UserList} edit={UserEdit} />
+        <Resource name="comment" list={CommentList} />
+        <CustomRoutes>
+          <Route path="/delivery-cost" element={<DeliveryCostSettings />} />
+        </CustomRoutes>
       </Admin>
     </QueryClientProvider>
   );

@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
 export const AppBar = () => (
-  <RaAppBar color="inherit" alwaysOn userMenu={false}>
+  <RaAppBar color="inherit" alwaysOn>
     <Box
       sx={{
         display: "flex",
