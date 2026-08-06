@@ -6,7 +6,9 @@ export type UpdateUserPayload = {
   point?: number;
 };
 
-export const getUsers = async (params: ListParams) => {
+export const getUsers = async (
+  params: ListParams,
+): Promise<ListResponse> => {
   const response = await apiClient.get<
     AxiosResponse<unknown[]> & { total?: number }
   >("/users", { params });
@@ -14,21 +16,19 @@ export const getUsers = async (params: ListParams) => {
   return {
     data: items,
     total: response.data?.total ?? items.length,
-  } satisfies ListResponse;
+  };
 };
 
-export const getUser = async (id: string | number) => {
-  const response = await apiClient.get<AxiosResponse<unknown>>(
-    `/users/${id}`,
-  );
+export const getUser = async (id: string | number): Promise<any> => {
+  const response = await apiClient.get<AxiosResponse<any>>(`/users/${id}`);
   return response.data?.data || response.data;
 };
 
 export const updateUser = async (
   id: string | number,
   payload: UpdateUserPayload,
-) => {
-  const response = await apiClient.patch<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.patch<AxiosResponse<any>>(
     `/users/${id}`,
     payload,
   );

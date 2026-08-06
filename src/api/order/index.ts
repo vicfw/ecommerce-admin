@@ -1,7 +1,9 @@
 import { apiClient, type AxiosResponse } from "../axios";
 import type { ListParams, ListResponse } from "../types";
 
-export const getOrders = async (params: ListParams) => {
+export const getOrders = async (
+  params: ListParams,
+): Promise<ListResponse> => {
   const response = await apiClient.get<
     AxiosResponse<unknown[]> & { total?: number }
   >("/order/admin", { params });
@@ -9,11 +11,11 @@ export const getOrders = async (params: ListParams) => {
   return {
     data: items,
     total: response.data?.total ?? items.length,
-  } satisfies ListResponse;
+  };
 };
 
-export const getOrder = async (id: string | number) => {
-  const response = await apiClient.get<AxiosResponse<unknown>>(
+export const getOrder = async (id: string | number): Promise<any> => {
+  const response = await apiClient.get<AxiosResponse<any>>(
     `/order/admin/${id}`,
   );
   return response.data?.data || response.data;
@@ -22,8 +24,8 @@ export const getOrder = async (id: string | number) => {
 export const updateOrderStatus = async (
   id: string | number,
   status: string,
-) => {
-  const response = await apiClient.patch<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.patch<AxiosResponse<any>>(
     `/order/admin/${id}/status`,
     { status },
   );

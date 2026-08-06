@@ -1,7 +1,9 @@
 import { apiClient, type AxiosResponse } from "../axios";
 import type { ListParams, ListResponse } from "../types";
 
-export const getComments = async (params: ListParams) => {
+export const getComments = async (
+  params: ListParams,
+): Promise<ListResponse> => {
   const response = await apiClient.get<
     AxiosResponse<unknown[]> & { total?: number }
   >("/comment/admin", { params });
@@ -9,20 +11,20 @@ export const getComments = async (params: ListParams) => {
   return {
     data: items,
     total: response.data?.total ?? items.length,
-  } satisfies ListResponse;
+  };
 };
 
 export const updateComment = async (
   id: string | number,
   payload: Record<string, unknown>,
-) => {
-  const response = await apiClient.patch<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.patch<AxiosResponse<any>>(
     `/comment/${id}`,
     payload,
   );
   return response.data?.data || response.data;
 };
 
-export const deleteComment = async (id: string | number) => {
+export const deleteComment = async (id: string | number): Promise<void> => {
   await apiClient.delete(`/comment/${id}`);
 };

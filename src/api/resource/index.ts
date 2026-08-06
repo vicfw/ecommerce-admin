@@ -1,37 +1,21 @@
 import { apiClient, type AxiosResponse } from "../axios";
+import { normalizeListResponse } from "../normalizeList";
 import type { ListParams, ListResponse } from "../types";
-
-const normalizeList = (data: unknown): ListResponse => {
-  if (Array.isArray(data)) {
-    return { data, total: data.length };
-  }
-
-  const body = data as {
-    data?: unknown[];
-    items?: unknown[];
-    total?: number;
-    pagination?: { total?: number };
-  };
-
-  const items = body?.data || body?.items || [];
-  const total = body?.total || body?.pagination?.total || items.length;
-  return { data: items, total };
-};
 
 /** Generic resource CRUD for standard `/${resource}` endpoints */
 export const getResourceList = async (
   resource: string,
   params: ListParams,
-) => {
+): Promise<ListResponse> => {
   const response = await apiClient.get(`/${resource}`, { params });
-  return normalizeList(response.data);
+  return normalizeListResponse(response.data);
 };
 
 export const getResourceOne = async (
   resource: string,
   id: string | number,
-) => {
-  const response = await apiClient.get<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.get<AxiosResponse<any>>(
     `/${resource}/${id}`,
   );
   return response.data?.data || response.data;
@@ -40,8 +24,8 @@ export const getResourceOne = async (
 export const createResource = async (
   resource: string,
   data: unknown,
-) => {
-  const response = await apiClient.post<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.post<AxiosResponse<any>>(
     `/${resource}`,
     data,
   );
@@ -52,8 +36,8 @@ export const updateResource = async (
   resource: string,
   id: string | number,
   data: unknown,
-) => {
-  const response = await apiClient.patch<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.patch<AxiosResponse<any>>(
     `/${resource}/${id}`,
     data,
   );
@@ -63,8 +47,8 @@ export const updateResource = async (
 export const deleteResource = async (
   resource: string,
   id: string | number,
-) => {
-  const response = await apiClient.delete<AxiosResponse<unknown>>(
+): Promise<any> => {
+  const response = await apiClient.delete<AxiosResponse<any>>(
     `/${resource}/${id}`,
   );
   return response.data?.data || response.data || { id };

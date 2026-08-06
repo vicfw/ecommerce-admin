@@ -1,6 +1,16 @@
 import type { DataProvider } from "react-admin";
 import { QueryClient } from "@tanstack/react-query";
-import { apiClient } from "../api/axios";
+import { getCatalogList, getCatalogOne } from "../api/catalog";
+import { deleteComment, getComments, updateComment } from "../api/comment";
+import { getOrder, getOrders, updateOrderStatus } from "../api/order";
+import {
+  createResource,
+  deleteResource,
+  getResourceList,
+  getResourceOne,
+  updateResource,
+} from "../api/resource";
+import { getUser, getUsers, updateUser } from "../api/users";
 import { normalizeIsApprovedFilter } from "../lib/commentFilters";
 
 export const queryClient = new QueryClient({
@@ -30,63 +40,52 @@ const ADMIN_CATALOG_RESOURCES = new Set([
 const isAdminCatalogResource = (resource: string) =>
   ADMIN_CATALOG_RESOURCES.has(resource);
 
+const invalidateResource = (resource: string, id?: string | number) => {
+  queryClient.invalidateQueries({ queryKey: [resource] });
+  if (id !== undefined) {
+    queryClient.invalidateQueries({
+      queryKey: [resource, "getOne", id],
+    });
+  }
+};
+
 export const axiosDataProvider = (): DataProvider => {
   const baseProvider: DataProvider = {
     getList: async (resource, params) => {
       const { page = 1, perPage = 10 } = params.pagination || {};
       const { field, order } = params.sort || {};
 
-      const data = await queryClient.fetchQuery({
+      return queryClient.fetchQuery({
         queryKey: [resource, "getList", params],
-        queryFn: async () => {
-          const response = await apiClient.get(`/${resource}`, {
-            params: {
-              page,
-              perPage,
-              sort: field,
-              order,
-              ...params.filter,
-            },
-          });
-          return response.data;
-        },
+        queryFn: () =>
+          getResourceList(resource, {
+            page,
+            perPage,
+            sort: field,
+            order,
+            ...params.filter,
+          }),
       });
-
-      const items = Array.isArray(data)
-        ? data
-        : data?.data || data?.items || [];
-      const total = data?.total || data?.pagination?.total || items.length;
-
-      return { data: items, total };
     },
 
     getOne: async (resource, params) => {
       const data = await queryClient.fetchQuery({
         queryKey: [resource, "getOne", params.id],
-        queryFn: async () => {
-          const response = await apiClient.get(`/${resource}/${params.id}`);
-          return response.data;
-        },
+        queryFn: () => getResourceOne(resource, params.id),
       });
-
-      return { data: data?.data || data };
+      return { data };
     },
 
     getMany: async (resource, params) => {
       const data = await queryClient.fetchQuery({
         queryKey: [resource, "getMany", params.ids],
         queryFn: async () => {
-          const fetchOne = async (id: string | number) => {
-            if (resource === "order") {
-              const response = await apiClient.get(`/order/admin/${id}`);
-              return response.data?.data || response.data;
-            }
+          const fetchOne = (id: string | number) => {
+            if (resource === "order") return getOrder(id);
             if (isAdminCatalogResource(resource)) {
-              const response = await apiClient.get(`/${resource}/admin/${id}`);
-              return response.data?.data || response.data;
+              return getCatalogOne(resource, id);
             }
-            const response = await apiClient.get(`/${resource}/${id}`);
-            return response.data?.data || response.data;
+            return getResourceOne(resource, id);
           };
           return Promise.all(params.ids.map(fetchOne));
         },
@@ -98,78 +97,56 @@ export const axiosDataProvider = (): DataProvider => {
     getManyReference: async (resource, params) => {
       const { page = 1, perPage = 10 } = params.pagination || {};
       const { field, order } = params.sort || {};
+      const listParams = {
+        [params.target]: params.id,
+        page,
+        perPage,
+        sort: field,
+        order,
+        ...params.filter,
+      };
 
-      const data = await queryClient.fetchQuery({
+      return queryClient.fetchQuery({
         queryKey: [resource, "getManyReference", params],
-        queryFn: async () => {
-          const path = isAdminCatalogResource(resource)
-            ? `/${resource}/admin`
-            : `/${resource}`;
-          const response = await apiClient.get(path, {
-            params: {
-              [params.target]: params.id,
-              page,
-              perPage,
-              sort: field,
-              order,
-              ...params.filter,
-            },
-          });
-          return response.data;
-        },
+        queryFn: () =>
+          isAdminCatalogResource(resource)
+            ? getCatalogList(resource, listParams)
+            : getResourceList(resource, listParams),
       });
-
-      const items = Array.isArray(data)
-        ? data
-        : data?.data || data?.items || [];
-      const total = data?.total || data?.pagination?.total || items.length;
-
-      return { data: items, total };
     },
 
     create: async (resource, params) => {
-      const response = await apiClient.post(`/${resource}`, params.data);
-      queryClient.invalidateQueries({ queryKey: [resource] });
-      return { data: response.data?.data || response.data };
+      const data = await createResource(resource, params.data);
+      invalidateResource(resource);
+      return { data };
     },
 
     update: async (resource, params) => {
-      const response = await apiClient.patch(
-        `/${resource}/${params.id}`,
-        params.data,
-      );
-      queryClient.invalidateQueries({ queryKey: [resource] });
-      queryClient.invalidateQueries({
-        queryKey: [resource, "getOne", params.id],
-      });
-      return { data: response.data?.data || response.data };
+      const data = await updateResource(resource, params.id, params.data);
+      invalidateResource(resource, params.id);
+      return { data };
     },
 
     updateMany: async (resource, params) => {
       await Promise.all(
-        params.ids.map((id) =>
-          apiClient.patch(`/${resource}/${id}`, params.data),
-        ),
+        params.ids.map((id) => updateResource(resource, id, params.data)),
       );
-      queryClient.invalidateQueries({ queryKey: [resource] });
+      invalidateResource(resource);
       return { data: params.ids };
     },
 
     delete: async (resource, params) => {
-      const response = await apiClient.delete(`/${resource}/${params.id}`);
-      queryClient.invalidateQueries({ queryKey: [resource] });
-      queryClient.removeQueries({ queryKey: [resource, "getOne", params.id] });
-      return {
-        data: (response.data?.data ||
-          response.data || { id: params.id }) as any,
-      };
+      const data = await deleteResource(resource, params.id);
+      invalidateResource(resource);
+      queryClient.removeQueries({
+        queryKey: [resource, "getOne", params.id],
+      });
+      return { data: data as any };
     },
 
     deleteMany: async (resource, params) => {
-      await Promise.all(
-        params.ids.map((id) => apiClient.delete(`/${resource}/${id}`)),
-      );
-      queryClient.invalidateQueries({ queryKey: [resource] });
+      await Promise.all(params.ids.map((id) => deleteResource(resource, id)));
+      invalidateResource(resource);
       params.ids.forEach((id) => {
         queryClient.removeQueries({ queryKey: [resource, "getOne", id] });
       });
@@ -179,57 +156,36 @@ export const axiosDataProvider = (): DataProvider => {
 
   return {
     ...baseProvider,
+
     getList: async (resource, params) => {
       const { page = 1, perPage = 10 } = params.pagination || {};
       const { field, order } = params.sort || {};
+      const listParams = {
+        page,
+        perPage,
+        sort: field,
+        order,
+        ...params.filter,
+      };
 
       if (resource === "order") {
-        const response = await apiClient.get("/order/admin", {
-          params: { page, perPage, sort: field, order, ...params.filter },
-        });
-        const data = response.data;
-        const items = data?.data || [];
-        return { data: items, total: data?.total ?? items.length };
+        return getOrders(listParams);
       }
 
       if (resource === "comment") {
-        const response = await apiClient.get("/comment/admin", {
-          params: {
-            page,
-            perPage,
-            ...normalizeIsApprovedFilter(params.filter),
-          },
+        return getComments({
+          page,
+          perPage,
+          ...normalizeIsApprovedFilter(params.filter),
         });
-        const data = response.data;
-        const items = data?.data || [];
-        return { data: items, total: data?.total ?? items.length };
       }
 
       if (resource === "users") {
-        const response = await apiClient.get("/users", {
-          params: { page, perPage, ...params.filter },
-        });
-        const data = response.data;
-        const items = data?.data || [];
-        return { data: items, total: data?.total ?? items.length };
+        return getUsers({ page, perPage, ...params.filter });
       }
 
       if (isAdminCatalogResource(resource)) {
-        const response = await apiClient.get(`/${resource}/admin`, {
-          params: {
-            page,
-            perPage,
-            sort: field,
-            order,
-            ...params.filter,
-          },
-        });
-        const data = response.data;
-        const items = Array.isArray(data)
-          ? data
-          : data?.data || data?.items || [];
-        const total = data?.total || data?.pagination?.total || items.length;
-        return { data: items, total };
+        return getCatalogList(resource, listParams);
       }
 
       return baseProvider.getList(resource, params);
@@ -237,58 +193,46 @@ export const axiosDataProvider = (): DataProvider => {
 
     getOne: async (resource, params) => {
       if (resource === "order") {
-        const response = await apiClient.get(`/order/admin/${params.id}`);
-        return { data: response.data?.data || response.data };
+        return { data: await getOrder(params.id) };
       }
       if (resource === "users") {
-        const response = await apiClient.get(`/users/${params.id}`);
-        return { data: response.data?.data || response.data };
+        return { data: await getUser(params.id) };
       }
       if (isAdminCatalogResource(resource)) {
-        const response = await apiClient.get(`/${resource}/admin/${params.id}`);
-        return { data: response.data?.data || response.data };
+        return { data: await getCatalogOne(resource, params.id) };
       }
       return baseProvider.getOne(resource, params);
     },
 
     update: async (resource, params) => {
       if (resource === "order") {
-        const response = await apiClient.patch(
-          `/order/admin/${params.id}/status`,
-          { status: params.data.status },
-        );
-        queryClient.invalidateQueries({ queryKey: [resource] });
-        queryClient.invalidateQueries({
-          queryKey: [resource, "getOne", params.id],
-        });
-        return { data: response.data?.data || response.data };
+        const data = await updateOrderStatus(params.id, params.data.status);
+        invalidateResource(resource, params.id);
+        return { data };
       }
       if (resource === "users") {
-        const response = await apiClient.patch(`/users/${params.id}`, {
+        const data = await updateUser(params.id, {
           isAdmin: params.data.isAdmin,
           point: params.data.point,
         });
-        queryClient.invalidateQueries({ queryKey: [resource] });
-        queryClient.invalidateQueries({
-          queryKey: [resource, "getOne", params.id],
-        });
-        return { data: response.data?.data || response.data };
+        invalidateResource(resource, params.id);
+        return { data };
       }
       if (resource === "comment") {
-        const response = await apiClient.patch(
-          `/comment/${params.id}`,
+        const data = await updateComment(
+          params.id,
           buildCommentUpdatePayload(params.data),
         );
-        queryClient.invalidateQueries({ queryKey: [resource] });
-        return { data: response.data?.data || response.data };
+        invalidateResource(resource);
+        return { data };
       }
       return baseProvider.update(resource, params);
     },
 
     delete: async (resource, params) => {
       if (resource === "comment") {
-        await apiClient.delete(`/comment/${params.id}`);
-        queryClient.invalidateQueries({ queryKey: [resource] });
+        await deleteComment(params.id);
+        invalidateResource(resource);
         return { data: { id: params.id } as any };
       }
       return baseProvider.delete(resource, params);
@@ -296,10 +240,8 @@ export const axiosDataProvider = (): DataProvider => {
 
     deleteMany: async (resource, params) => {
       if (resource === "comment") {
-        await Promise.all(
-          params.ids.map((id) => apiClient.delete(`/comment/${id}`)),
-        );
-        queryClient.invalidateQueries({ queryKey: [resource] });
+        await Promise.all(params.ids.map((id) => deleteComment(id)));
+        invalidateResource(resource);
         return { data: params.ids };
       }
       return baseProvider.deleteMany(resource, params);

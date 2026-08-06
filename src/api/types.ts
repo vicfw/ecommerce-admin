@@ -6,7 +6,7 @@ export type ListParams = {
   [key: string]: unknown;
 };
 
-export type ListResponse<T = unknown> = {
+export type ListResponse<T = any> = {
   data: T[];
   total: number;
 };
