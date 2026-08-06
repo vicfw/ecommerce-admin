@@ -20,6 +20,16 @@ const buildCommentUpdatePayload = (data: Record<string, unknown>) => {
   return payload;
 };
 
+const ADMIN_CATALOG_RESOURCES = new Set([
+  "product",
+  "brand",
+  "badge",
+  "colorImage",
+]);
+
+const isAdminCatalogResource = (resource: string) =>
+  ADMIN_CATALOG_RESOURCES.has(resource);
+
 export const axiosDataProvider = (): DataProvider => {
   const baseProvider: DataProvider = {
     getList: async (resource, params) => {
@@ -71,6 +81,10 @@ export const axiosDataProvider = (): DataProvider => {
               const response = await apiClient.get(`/order/admin/${id}`);
               return response.data?.data || response.data;
             }
+            if (isAdminCatalogResource(resource)) {
+              const response = await apiClient.get(`/${resource}/admin/${id}`);
+              return response.data?.data || response.data;
+            }
             const response = await apiClient.get(`/${resource}/${id}`);
             return response.data?.data || response.data;
           };
@@ -88,7 +102,10 @@ export const axiosDataProvider = (): DataProvider => {
       const data = await queryClient.fetchQuery({
         queryKey: [resource, "getManyReference", params],
         queryFn: async () => {
-          const response = await apiClient.get(`/${resource}`, {
+          const path = isAdminCatalogResource(resource)
+            ? `/${resource}/admin`
+            : `/${resource}`;
+          const response = await apiClient.get(path, {
             params: {
               [params.target]: params.id,
               page,
@@ -119,7 +136,7 @@ export const axiosDataProvider = (): DataProvider => {
     update: async (resource, params) => {
       const response = await apiClient.patch(
         `/${resource}/${params.id}`,
-        params.data
+        params.data,
       );
       queryClient.invalidateQueries({ queryKey: [resource] });
       queryClient.invalidateQueries({
@@ -131,8 +148,8 @@ export const axiosDataProvider = (): DataProvider => {
     updateMany: async (resource, params) => {
       await Promise.all(
         params.ids.map((id) =>
-          apiClient.patch(`/${resource}/${id}`, params.data)
-        )
+          apiClient.patch(`/${resource}/${id}`, params.data),
+        ),
       );
       queryClient.invalidateQueries({ queryKey: [resource] });
       return { data: params.ids };
@@ -150,7 +167,7 @@ export const axiosDataProvider = (): DataProvider => {
 
     deleteMany: async (resource, params) => {
       await Promise.all(
-        params.ids.map((id) => apiClient.delete(`/${resource}/${id}`))
+        params.ids.map((id) => apiClient.delete(`/${resource}/${id}`)),
       );
       queryClient.invalidateQueries({ queryKey: [resource] });
       params.ids.forEach((id) => {
@@ -197,6 +214,24 @@ export const axiosDataProvider = (): DataProvider => {
         return { data: items, total: data?.total ?? items.length };
       }
 
+      if (isAdminCatalogResource(resource)) {
+        const response = await apiClient.get(`/${resource}/admin`, {
+          params: {
+            page,
+            perPage,
+            sort: field,
+            order,
+            ...params.filter,
+          },
+        });
+        const data = response.data;
+        const items = Array.isArray(data)
+          ? data
+          : data?.data || data?.items || [];
+        const total = data?.total || data?.pagination?.total || items.length;
+        return { data: items, total };
+      }
+
       return baseProvider.getList(resource, params);
     },
 
@@ -209,6 +244,10 @@ export const axiosDataProvider = (): DataProvider => {
         const response = await apiClient.get(`/users/${params.id}`);
         return { data: response.data?.data || response.data };
       }
+      if (isAdminCatalogResource(resource)) {
+        const response = await apiClient.get(`/${resource}/admin/${params.id}`);
+        return { data: response.data?.data || response.data };
+      }
       return baseProvider.getOne(resource, params);
     },
 
@@ -216,7 +255,7 @@ export const axiosDataProvider = (): DataProvider => {
       if (resource === "order") {
         const response = await apiClient.patch(
           `/order/admin/${params.id}/status`,
-          { status: params.data.status }
+          { status: params.data.status },
         );
         queryClient.invalidateQueries({ queryKey: [resource] });
         queryClient.invalidateQueries({
@@ -238,7 +277,7 @@ export const axiosDataProvider = (): DataProvider => {
       if (resource === "comment") {
         const response = await apiClient.patch(
           `/comment/${params.id}`,
-          buildCommentUpdatePayload(params.data)
+          buildCommentUpdatePayload(params.data),
         );
         queryClient.invalidateQueries({ queryKey: [resource] });
         return { data: response.data?.data || response.data };
@@ -258,7 +297,7 @@ export const axiosDataProvider = (): DataProvider => {
     deleteMany: async (resource, params) => {
       if (resource === "comment") {
         await Promise.all(
-          params.ids.map((id) => apiClient.delete(`/comment/${id}`))
+          params.ids.map((id) => apiClient.delete(`/comment/${id}`)),
         );
         queryClient.invalidateQueries({ queryKey: [resource] });
         return { data: params.ids };
