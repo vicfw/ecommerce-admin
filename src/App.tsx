@@ -33,6 +33,7 @@ import { AppLayout } from "./layouts/AppLayout";
 import { adminDarkTheme, adminLightTheme } from "./theme/adminTheme";
 import { Dashboard } from "./pages/Dashboard";
 import { DeliveryCostSettings } from "./pages/DeliveryCostSettings";
+import { HomepageEditor } from "./pages/HomepageEditor";
 import { LoginPage } from "./pages/Login";
 import { authProvider } from "./providers/authProvider";
 
@@ -87,6 +88,7 @@ function App() {
         <Resource name="comment" list={CommentList} />
         <CustomRoutes>
           <Route path="/delivery-cost" element={<DeliveryCostSettings />} />
+          <Route path="/homepage" element={<HomepageEditor />} />
         </CustomRoutes>
       </Admin>
     </QueryClientProvider>

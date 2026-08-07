@@ -11,6 +11,7 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PeopleIcon from "@mui/icons-material/People";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import HomeIcon from "@mui/icons-material/Home";
 
 const sectionHeaderSx = {
   px: 2.5,
@@ -86,6 +87,11 @@ export const Menu = () => (
       />
 
       <ListSubheader sx={sectionHeaderSx}>Settings</ListSubheader>
+      <RaMenu.Item
+        to="/homepage"
+        primaryText="Homepage"
+        leftIcon={<HomeIcon />}
+      />
       <RaMenu.Item
         to="/delivery-cost"
         primaryText="Delivery Cost"

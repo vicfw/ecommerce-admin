@@ -53,3 +53,111 @@ export const getDashboardStats = async () => {
     await apiClient.get<AxiosResponse<DashboardStats>>("/admin/dashboard");
   return response.data.data;
 };
+
+export type HomepageBannerSection = {
+  id: string;
+  type: "banner";
+  imageUrl: string;
+  href?: string;
+  alt?: string;
+};
+
+export type HomepageProductSliderSection = {
+  id: string;
+  type: "product_slider";
+  title: string;
+  productIds: number[];
+};
+
+export type HomepageContentBlock =
+  | HomepageBannerSection
+  | HomepageProductSliderSection;
+
+export type HomepageRowSection = {
+  id: string;
+  type: "row";
+  columns: HomepageContentBlock[];
+};
+
+export type HomepageSection = HomepageContentBlock | HomepageRowSection;
+
+export type HomepageLayout = {
+  desktop: HomepageSection[];
+  mobile: HomepageSection[];
+};
+
+export type Homepage = {
+  id: number;
+  sections: HomepageLayout;
+  updatedAt: string | null;
+};
+
+export const emptyHomepageLayout = (): HomepageLayout => ({
+  desktop: [],
+  mobile: [],
+});
+
+/** Normalize legacy flat section arrays into the desktop/mobile layout. */
+export const normalizeHomepageLayout = (value: unknown): HomepageLayout => {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Array.isArray((value as HomepageLayout).desktop) &&
+    Array.isArray((value as HomepageLayout).mobile)
+  ) {
+    return {
+      desktop: (value as HomepageLayout).desktop,
+      mobile: (value as HomepageLayout).mobile,
+    };
+  }
+
+  if (Array.isArray(value)) {
+    return {
+      desktop: value as HomepageSection[],
+      mobile: [],
+    };
+  }
+
+  return emptyHomepageLayout();
+};
+
+export const getHomepageAdmin = async () => {
+  const response =
+    await apiClient.get<AxiosResponse<Homepage>>("/homepage/admin");
+  const data = response.data.data;
+  return {
+    ...data,
+    sections: normalizeHomepageLayout(data.sections),
+  };
+};
+
+export const updateHomepage = async (layout: HomepageLayout) => {
+  const response = await apiClient.put<AxiosResponse<Homepage>>("/homepage", {
+    desktop: layout.desktop,
+    mobile: layout.mobile,
+  });
+  const data = response.data.data;
+  return {
+    ...data,
+    sections: normalizeHomepageLayout(data.sections),
+  };
+};
+
+
+export const uploadImages = async (files: File[]) => {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append("images", file);
+  });
+
+  // Let the browser set multipart boundary (do not force Content-Type).
+  const response = await apiClient.post<
+    AxiosResponse<{ url: string[] }>
+  >("/upload", formData, {
+    headers: { "Content-Type": undefined },
+    timeout: 60000,
+  });
+
+  return response.data.data.url;
+};
