@@ -21,6 +21,11 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ComputerIcon from "@mui/icons-material/Computer";
 import SmartphoneIcon from "@mui/icons-material/Smartphone";
+import CollectionsIcon from "@mui/icons-material/Collections";
+import CircleOutlinedIcon from "@mui/icons-material/CircleOutlined";
+import AddIcon from "@mui/icons-material/Add";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import {
   DndContext,
   closestCenter,
@@ -39,6 +44,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { Title, useDataProvider, useNotify } from "react-admin";
 import {
   emptyHomepageLayout,
@@ -48,11 +54,17 @@ import {
   uploadImages,
   type HomepageBannerSection,
   type HomepageContentBlock,
+  type HomepageImageSlide,
+  type HomepageImageSliderSection,
   type HomepageLayout,
   type HomepageProductSliderSection,
   type HomepageRowSection,
   type HomepageSection,
+  type HomepageStoryLinkItem,
+  type HomepageStoryLinksSection,
 } from "../api/admin";
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 
 type DeviceTab = "desktop" | "mobile";
 
@@ -83,6 +95,33 @@ const createSlider = (): HomepageProductSliderSection => ({
   type: "product_slider",
   title: "",
   productIds: [],
+  backgroundColor: "",
+});
+
+const createStoryItem = (): HomepageStoryLinkItem => ({
+  id: newId(),
+  imageUrl: "",
+  label: "",
+  href: "",
+});
+
+const createStoryLinks = (): HomepageStoryLinksSection => ({
+  id: newId(),
+  type: "story_links",
+  items: [createStoryItem()],
+});
+
+const createImageSlide = (): HomepageImageSlide => ({
+  id: newId(),
+  imageUrl: "",
+  href: "",
+  alt: "",
+});
+
+const createImageSlider = (): HomepageImageSliderSection => ({
+  id: newId(),
+  type: "image_slider",
+  slides: [createImageSlide()],
 });
 
 const createRow = (columnCount = 2): HomepageRowSection => ({
@@ -131,6 +170,20 @@ const cloneSectionsWithNewIds = (
         })),
       };
     }
+    if (section.type === "story_links") {
+      return {
+        ...section,
+        id: newId(),
+        items: section.items.map((item) => ({ ...item, id: newId() })),
+      };
+    }
+    if (section.type === "image_slider") {
+      return {
+        ...section,
+        id: newId(),
+        slides: section.slides.map((slide) => ({ ...slide, id: newId() })),
+      };
+    }
     return { ...section, id: newId() };
   });
 
@@ -147,11 +200,15 @@ const sanitizeContentBlock = (
     };
   }
 
+  const backgroundColor = block.backgroundColor?.trim();
   return {
     id: block.id,
     type: "product_slider",
     title: block.title.trim(),
     productIds: block.productIds,
+    ...(backgroundColor && HEX_COLOR_RE.test(backgroundColor)
+      ? { backgroundColor }
+      : {}),
   };
 };
 
@@ -162,6 +219,30 @@ const sanitizeSections = (sections: HomepageSection[]): HomepageSection[] =>
         id: section.id,
         type: "row" as const,
         columns: section.columns.map(sanitizeContentBlock),
+      };
+    }
+    if (section.type === "story_links") {
+      return {
+        id: section.id,
+        type: "story_links" as const,
+        items: section.items.map((item) => ({
+          id: item.id,
+          imageUrl: item.imageUrl.trim(),
+          label: item.label.trim(),
+          href: item.href.trim(),
+        })),
+      };
+    }
+    if (section.type === "image_slider") {
+      return {
+        id: section.id,
+        type: "image_slider" as const,
+        slides: section.slides.map((slide) => ({
+          id: slide.id,
+          imageUrl: slide.imageUrl.trim(),
+          ...(slide.href?.trim() ? { href: slide.href.trim() } : {}),
+          ...(slide.alt?.trim() ? { alt: slide.alt.trim() } : {}),
+        })),
       };
     }
     return sanitizeContentBlock(section);
@@ -187,6 +268,13 @@ const findFirstInvalidMessage = (
         if (column.type === "product_slider" && !column.title.trim()) {
           return `${position} row column ${c + 1}: product slider needs a title`;
         }
+        if (
+          column.type === "product_slider" &&
+          column.backgroundColor?.trim() &&
+          !HEX_COLOR_RE.test(column.backgroundColor.trim())
+        ) {
+          return `${position} row column ${c + 1}: background color must be #RRGGBB`;
+        }
       }
       continue;
     }
@@ -196,6 +284,40 @@ const findFirstInvalidMessage = (
     }
     if (section.type === "product_slider" && !section.title.trim()) {
       return `${position} (slider): needs a title`;
+    }
+    if (
+      section.type === "product_slider" &&
+      section.backgroundColor?.trim() &&
+      !HEX_COLOR_RE.test(section.backgroundColor.trim())
+    ) {
+      return `${position} (slider): background color must be #RRGGBB`;
+    }
+    if (section.type === "story_links") {
+      if (section.items.length < 1) {
+        return `${position} (stories): needs at least one item`;
+      }
+      for (let j = 0; j < section.items.length; j += 1) {
+        const item = section.items[j];
+        if (!item.imageUrl.trim()) {
+          return `${position} story item ${j + 1}: needs an image`;
+        }
+        if (!item.label.trim()) {
+          return `${position} story item ${j + 1}: needs a label`;
+        }
+        if (!item.href.trim()) {
+          return `${position} story item ${j + 1}: needs a link`;
+        }
+      }
+    }
+    if (section.type === "image_slider") {
+      if (section.slides.length < 1) {
+        return `${position} (image slider): needs at least one slide`;
+      }
+      for (let j = 0; j < section.slides.length; j += 1) {
+        if (!section.slides[j].imageUrl.trim()) {
+          return `${position} slide ${j + 1}: needs an image URL`;
+        }
+      }
     }
   }
   return null;
@@ -407,6 +529,94 @@ const ContentBlockEditor = ({
             required
           />
 
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: HEX_COLOR_RE.test(block.backgroundColor?.trim() ?? "")
+                  ? block.backgroundColor
+                  : "transparent",
+                backgroundImage: !HEX_COLOR_RE.test(
+                  block.backgroundColor?.trim() ?? ""
+                )
+                  ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
+                  : undefined,
+                backgroundSize: "8px 8px",
+                backgroundPosition: "0 0, 0 4px, 4px -4px, -4px 0",
+              }}
+            />
+            <Box
+              component="input"
+              type="color"
+              value={
+                HEX_COLOR_RE.test(block.backgroundColor?.trim() ?? "")
+                  ? block.backgroundColor!.trim()
+                  : "#e91e8c"
+              }
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                const backgroundColor = e.target.value;
+                onChange((prev) =>
+                  prev.type === "product_slider"
+                    ? { ...prev, backgroundColor }
+                    : prev
+                );
+              }}
+              sx={{
+                width: 48,
+                height: 40,
+                p: 0,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                cursor: "pointer",
+                bgcolor: "transparent",
+              }}
+            />
+            <Box sx={{ flex: 1, minWidth: 140 }}>
+              <TextField
+                label="Background color (optional)"
+                value={block.backgroundColor ?? ""}
+                onChange={(e) => {
+                  const backgroundColor = e.target.value;
+                  onChange((prev) =>
+                    prev.type === "product_slider"
+                      ? { ...prev, backgroundColor }
+                      : prev
+                  );
+                }}
+                fullWidth
+                size="small"
+                placeholder="#E91E8C"
+                helperText="Hex #RRGGBB — leave empty for none"
+              />
+            </Box>
+            {(block.backgroundColor ?? "").trim() !== "" && (
+              <Button
+                size="small"
+                onClick={() =>
+                  onChange((prev) =>
+                    prev.type === "product_slider"
+                      ? { ...prev, backgroundColor: "" }
+                      : prev
+                  )
+                }
+              >
+                Clear
+              </Button>
+            )}
+          </Box>
+
           <Autocomplete
             multiple
             options={autocompleteOptions}
@@ -445,6 +655,459 @@ const ContentBlockEditor = ({
   );
 };
 
+type StoryLinksEditorProps = {
+  section: HomepageStoryLinksSection;
+  onChange: (updater: SectionUpdater) => void;
+  onUploadError: () => void;
+};
+
+const StoryLinksEditor = ({
+  section,
+  onChange,
+  onUploadError,
+}: StoryLinksEditorProps) => {
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  const updateItem = (
+    itemId: string,
+    patch: Partial<HomepageStoryLinkItem>
+  ) => {
+    onChange((prev) => {
+      if (prev.type !== "story_links") return prev;
+      return {
+        ...prev,
+        items: prev.items.map((item) =>
+          item.id === itemId ? { ...item, ...patch } : item
+        ),
+      };
+    });
+  };
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    onChange((prev) => {
+      if (prev.type !== "story_links") return prev;
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.items.length) return prev;
+      return { ...prev, items: arrayMove(prev.items, index, nextIndex) };
+    });
+  };
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {section.items.map((item, index) => (
+        <Box
+          key={item.id}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            p: 1.5,
+            borderRadius: 1.5,
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.default",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Item {index + 1}
+            </Typography>
+            <Box sx={{ display: "flex", gap: 0.5 }}>
+              <IconButton
+                size="small"
+                disabled={index === 0}
+                onClick={() => moveItem(index, -1)}
+                aria-label="Move up"
+              >
+                <ArrowUpwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={index === section.items.length - 1}
+                onClick={() => moveItem(index, 1)}
+                aria-label="Move down"
+              >
+                <ArrowDownwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                disabled={section.items.length <= 1}
+                onClick={() =>
+                  onChange((prev) =>
+                    prev.type === "story_links"
+                      ? {
+                          ...prev,
+                          items: prev.items.filter((i) => i.id !== item.id),
+                        }
+                      : prev
+                  )
+                }
+                aria-label="Remove item"
+              >
+                <DeleteOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "flex-start",
+            }}
+          >
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                border: "1px dashed",
+                borderColor: "divider",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "background.paper",
+                flexShrink: 0,
+              }}
+            >
+              {item.imageUrl ? (
+                <Box
+                  component="img"
+                  src={item.imageUrl}
+                  alt={item.label || "Story preview"}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <CircleOutlinedIcon color="disabled" />
+              )}
+            </Box>
+
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 200,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+              }}
+            >
+              <Button
+                variant="outlined"
+                component="label"
+                disabled={uploadingId === item.id}
+                size="small"
+              >
+                {uploadingId === item.id ? "Uploading…" : "Upload image"}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    setUploadingId(item.id);
+                    try {
+                      const urls = await uploadImages([file]);
+                      if (urls?.[0]) updateItem(item.id, { imageUrl: urls[0] });
+                    } catch {
+                      onUploadError();
+                    } finally {
+                      setUploadingId(null);
+                    }
+                  }}
+                />
+              </Button>
+              <TextField
+                label="Image URL"
+                value={item.imageUrl}
+                onChange={(e) =>
+                  updateItem(item.id, { imageUrl: e.target.value })
+                }
+                fullWidth
+                size="small"
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+              <TextField
+                label="Label"
+                value={item.label}
+                onChange={(e) => updateItem(item.id, { label: e.target.value })}
+                fullWidth
+                size="small"
+                required
+              />
+            </Box>
+            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+              <TextField
+                label="Link URL"
+                value={item.href}
+                onChange={(e) => updateItem(item.id, { href: e.target.value })}
+                fullWidth
+                size="small"
+                required
+              />
+            </Box>
+          </Box>
+        </Box>
+      ))}
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() =>
+          onChange((prev) =>
+            prev.type === "story_links"
+              ? { ...prev, items: [...prev.items, createStoryItem()] }
+              : prev
+          )
+        }
+      >
+        Add story item
+      </Button>
+    </Box>
+  );
+};
+
+type ImageSliderEditorProps = {
+  section: HomepageImageSliderSection;
+  onChange: (updater: SectionUpdater) => void;
+  onUploadError: () => void;
+};
+
+const ImageSliderEditor = ({
+  section,
+  onChange,
+  onUploadError,
+}: ImageSliderEditorProps) => {
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  const updateSlide = (slideId: string, patch: Partial<HomepageImageSlide>) => {
+    onChange((prev) => {
+      if (prev.type !== "image_slider") return prev;
+      return {
+        ...prev,
+        slides: prev.slides.map((slide) =>
+          slide.id === slideId ? { ...slide, ...patch } : slide
+        ),
+      };
+    });
+  };
+
+  const moveSlide = (index: number, direction: -1 | 1) => {
+    onChange((prev) => {
+      if (prev.type !== "image_slider") return prev;
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.slides.length) return prev;
+      return { ...prev, slides: arrayMove(prev.slides, index, nextIndex) };
+    });
+  };
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {section.slides.map((slide, index) => (
+        <Box
+          key={slide.id}
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            p: 1.5,
+            borderRadius: 1.5,
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.default",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Slide {index + 1}
+            </Typography>
+            <Box sx={{ display: "flex", gap: 0.5 }}>
+              <IconButton
+                size="small"
+                disabled={index === 0}
+                onClick={() => moveSlide(index, -1)}
+                aria-label="Move up"
+              >
+                <ArrowUpwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={index === section.slides.length - 1}
+                onClick={() => moveSlide(index, 1)}
+                aria-label="Move down"
+              >
+                <ArrowDownwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                disabled={section.slides.length <= 1}
+                onClick={() =>
+                  onChange((prev) =>
+                    prev.type === "image_slider"
+                      ? {
+                          ...prev,
+                          slides: prev.slides.filter((s) => s.id !== slide.id),
+                        }
+                      : prev
+                  )
+                }
+                aria-label="Remove slide"
+              >
+                <DeleteOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "flex-start",
+            }}
+          >
+            <Box
+              sx={{
+                width: { xs: "100%", md: 220 },
+                height: 120,
+                borderRadius: 1,
+                border: "1px dashed",
+                borderColor: "divider",
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "background.paper",
+              }}
+            >
+              {slide.imageUrl ? (
+                <Box
+                  component="img"
+                  src={slide.imageUrl}
+                  alt={slide.alt || "Slide preview"}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No image
+                </Typography>
+              )}
+            </Box>
+
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 220,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+              }}
+            >
+              <Button
+                variant="outlined"
+                component="label"
+                disabled={uploadingId === slide.id}
+                size="small"
+              >
+                {uploadingId === slide.id ? "Uploading…" : "Upload image"}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    setUploadingId(slide.id);
+                    try {
+                      const urls = await uploadImages([file]);
+                      if (urls?.[0])
+                        updateSlide(slide.id, { imageUrl: urls[0] });
+                    } catch {
+                      onUploadError();
+                    } finally {
+                      setUploadingId(null);
+                    }
+                  }}
+                />
+              </Button>
+              <TextField
+                label="Image URL"
+                value={slide.imageUrl}
+                onChange={(e) =>
+                  updateSlide(slide.id, { imageUrl: e.target.value })
+                }
+                fullWidth
+                size="small"
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+              <TextField
+                label="Link URL (optional)"
+                value={slide.href ?? ""}
+                onChange={(e) =>
+                  updateSlide(slide.id, { href: e.target.value })
+                }
+                fullWidth
+                size="small"
+              />
+            </Box>
+            <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+              <TextField
+                label="Alt text (optional)"
+                value={slide.alt ?? ""}
+                onChange={(e) => updateSlide(slide.id, { alt: e.target.value })}
+                fullWidth
+                size="small"
+              />
+            </Box>
+          </Box>
+        </Box>
+      ))}
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() =>
+          onChange((prev) =>
+            prev.type === "image_slider"
+              ? { ...prev, slides: [...prev.slides, createImageSlide()] }
+              : prev
+          )
+        }
+      >
+        Add slide
+      </Button>
+    </Box>
+  );
+};
+
 type SortableSectionProps = {
   section: HomepageSection;
   expanded: boolean;
@@ -463,12 +1126,18 @@ const sectionLabel = (section: HomepageSection) => {
   if (section.type === "product_slider") {
     return section.title || "Product slider";
   }
+  if (section.type === "story_links") return "Story links";
+  if (section.type === "image_slider") {
+    return `Image slider (${section.slides.length})`;
+  }
   return `Row (${section.columns.length} columns)`;
 };
 
 const sectionChip = (section: HomepageSection) => {
   if (section.type === "banner") return "Banner";
   if (section.type === "product_slider") return "Slider";
+  if (section.type === "story_links") return "Stories";
+  if (section.type === "image_slider") return "Images";
   return "Row";
 };
 
@@ -555,6 +1224,13 @@ const SortableSection = ({
           <ImageIcon fontSize="small" sx={{ color: "text.secondary" }} />
         ) : section.type === "product_slider" ? (
           <ViewCarouselIcon fontSize="small" sx={{ color: "text.secondary" }} />
+        ) : section.type === "story_links" ? (
+          <CircleOutlinedIcon
+            fontSize="small"
+            sx={{ color: "text.secondary" }}
+          />
+        ) : section.type === "image_slider" ? (
+          <CollectionsIcon fontSize="small" sx={{ color: "text.secondary" }} />
         ) : (
           <ViewWeekIcon fontSize="small" sx={{ color: "text.secondary" }} />
         )}
@@ -669,12 +1345,26 @@ const SortableSection = ({
                 ))}
               </Box>
             </>
+          ) : section.type === "story_links" ? (
+            <StoryLinksEditor
+              section={section}
+              onChange={onChange}
+              onUploadError={onUploadError}
+            />
+          ) : section.type === "image_slider" ? (
+            <ImageSliderEditor
+              section={section}
+              onChange={onChange}
+              onUploadError={onUploadError}
+            />
           ) : (
             <ContentBlockEditor
               block={section}
               onChange={(updater) => {
                 onChange((prev) =>
-                  prev.type === "row" ? prev : updater(prev)
+                  prev.type === "banner" || prev.type === "product_slider"
+                    ? updater(prev)
+                    : prev
                 );
               }}
               onProductsResolved={onProductsResolved}
@@ -937,6 +1627,20 @@ export const HomepageEditor = () => {
           </Button>
           <Button
             variant="outlined"
+            onClick={() => addSection(createImageSlider())}
+            startIcon={<CollectionsIcon />}
+          >
+            Add image slider
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => addSection(createStoryLinks())}
+            startIcon={<CircleOutlinedIcon />}
+          >
+            Add story links
+          </Button>
+          <Button
+            variant="outlined"
             onClick={() => addSection(createSlider())}
             startIcon={<ViewCarouselIcon />}
           >
@@ -1013,7 +1717,7 @@ export const HomepageEditor = () => {
           <Typography color="text.secondary" sx={{ mb: 2 }}>
             {deviceTab === "mobile"
               ? "Mobile layout is empty. Add sections or copy from desktop so mobile visitors are not left with a blank homepage."
-              : "No sections yet. Add a banner, product slider, or row to get started."}
+              : "No sections yet. Add a banner, image slider, story links, product slider, or row to get started."}
           </Typography>
           <Box
             sx={{
@@ -1028,6 +1732,18 @@ export const HomepageEditor = () => {
               onClick={() => addSection(createBanner())}
             >
               Add banner
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => addSection(createImageSlider())}
+            >
+              Add image slider
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => addSection(createStoryLinks())}
+            >
+              Add story links
             </Button>
             <Button
               variant="outlined"
