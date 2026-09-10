@@ -33,7 +33,12 @@ export type DashboardStats = {
   totalRevenue: number;
   totalUsers: number;
   pendingComments: number;
-  lowStockProducts: Array<{ id: number; prName: string; quantity: number }>;
+  lowStockProducts: Array<{
+    id: number;
+    prName: string;
+    quantity: number;
+    reservedQuantity?: number;
+  }>;
   recentOrders: Array<{
     id: number;
     status: string;

@@ -118,7 +118,8 @@ export const Dashboard = () => {
             <TableHead>
               <TableRow>
                 <TableCell>Product</TableCell>
-                <TableCell align="right">Quantity</TableCell>
+                <TableCell align="right">Available</TableCell>
+                <TableCell align="right">Reserved</TableCell>
                 <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
@@ -127,6 +128,9 @@ export const Dashboard = () => {
                 <TableRow key={product.id}>
                   <TableCell>{product.prName}</TableCell>
                   <TableCell align="right">{product.quantity}</TableCell>
+                  <TableCell align="right">
+                    {product.reservedQuantity ?? 0}
+                  </TableCell>
                   <TableCell align="right">
                     <Button
                       size="small"

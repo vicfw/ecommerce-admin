@@ -127,6 +127,24 @@ export const ProductForm = () => {
 
         <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
           <NumberInput
+            source="reservedQuantity"
+            label="Reserved"
+            fullWidth
+            disabled
+            defaultValue={0}
+          />
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Box sx={{ width: { xs: "100%", md: "calc(50% - 8px)" } }}>
+          <NumberInput
             source="weight"
             label="Weight"
             fullWidth

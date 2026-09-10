@@ -49,7 +49,14 @@ export const ProductList = () => {
         </ReferenceField>
         <NumberField source="price" label="Price" />
         <NumberField source="discount" label="Discount" />
-        <NumberField source="quantity" label="Quantity" />
+        <NumberField source="quantity" label="On hand" />
+        <NumberField source="reservedQuantity" label="Reserved" />
+        <FunctionField
+          label="Available"
+          render={(record: { quantity?: number; reservedQuantity?: number }) =>
+            Math.max(0, (record.quantity ?? 0) - (record.reservedQuantity ?? 0))
+          }
+        />
         <EditButton />
         <DeleteButton />
       </Datagrid>

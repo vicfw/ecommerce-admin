@@ -113,6 +113,7 @@ const OrderDetails = () => {
   const record = useRecordContext<{
     id?: number;
     status?: string;
+    inventoryStatus?: string;
     totalAmount?: number;
     deliveryAmount?: number;
     profitFromDiscount?: number;
@@ -171,6 +172,10 @@ const OrderDetails = () => {
           <DetailRow
             label="Status"
             value={<Chip label={record.status} size="small" />}
+          />
+          <DetailRow
+            label="Inventory"
+            value={record.inventoryStatus || "-"}
           />
           <DetailRow
             label="Total Amount"
