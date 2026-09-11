@@ -197,3 +197,34 @@ export const uploadImages = async (files: File[]) => {
 
   return response.data.data.url;
 };
+
+export type SiteSettings = {
+  id: number;
+  siteName: string;
+  logoUrl: string | null;
+  logoAlt: string | null;
+  faviconUrl: string | null;
+  updatedAt: string | null;
+};
+
+export type UpdateSiteSettingsPayload = {
+  siteName: string;
+  logoUrl: string | null;
+  logoAlt: string | null;
+  faviconUrl: string | null;
+};
+
+export const getSiteSettingsAdmin = async () => {
+  const response = await apiClient.get<AxiosResponse<SiteSettings>>(
+    "/site-settings/admin"
+  );
+  return response.data.data;
+};
+
+export const updateSiteSettings = async (payload: UpdateSiteSettingsPayload) => {
+  const response = await apiClient.put<AxiosResponse<SiteSettings>>(
+    "/site-settings",
+    payload
+  );
+  return response.data.data;
+};

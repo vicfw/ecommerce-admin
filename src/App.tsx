@@ -34,6 +34,7 @@ import { adminDarkTheme, adminLightTheme } from "./theme/adminTheme";
 import { Dashboard } from "./pages/Dashboard";
 import { DeliveryCostSettings } from "./pages/DeliveryCostSettings";
 import { HomepageEditor } from "./pages/HomepageEditor";
+import { SiteLogoSettings } from "./pages/SiteLogoSettings";
 import { LoginPage } from "./pages/Login";
 import { authProvider } from "./providers/authProvider";
 
@@ -89,6 +90,7 @@ function App() {
         <CustomRoutes>
           <Route path="/delivery-cost" element={<DeliveryCostSettings />} />
           <Route path="/homepage" element={<HomepageEditor />} />
+          <Route path="/site-logo" element={<SiteLogoSettings />} />
         </CustomRoutes>
       </Admin>
     </QueryClientProvider>

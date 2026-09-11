@@ -12,6 +12,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import HomeIcon from "@mui/icons-material/Home";
+import ImageIcon from "@mui/icons-material/Image";
 
 const sectionHeaderSx = {
   px: 2.5,
@@ -91,6 +92,11 @@ export const Menu = () => (
         to="/homepage"
         primaryText="Homepage"
         leftIcon={<HomeIcon />}
+      />
+      <RaMenu.Item
+        to="/site-logo"
+        primaryText="Site Logo"
+        leftIcon={<ImageIcon />}
       />
       <RaMenu.Item
         to="/delivery-cost"
