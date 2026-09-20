@@ -4,7 +4,11 @@ import { transformProductData } from "./productTransform";
 
 export const ProductCreate = () => {
   return (
-    <Create transform={transformProductData} redirect="list">
+    <Create
+      mutationMode="pessimistic"
+      transform={transformProductData}
+      redirect="list"
+    >
       <SimpleForm>
         <ProductForm />
       </SimpleForm>
