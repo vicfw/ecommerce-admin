@@ -163,7 +163,6 @@ export const ProductForm = () => {
           fullWidth
           multiline
           rows={4}
-          validate={required()}
         />
       </Box>
 
