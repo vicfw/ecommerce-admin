@@ -4,6 +4,7 @@ import {
   List,
   Datagrid,
   TextField,
+  NumberField,
   DateField,
   FunctionField,
   DeleteButton,
@@ -100,6 +101,7 @@ export const CommentList = () => {
               : record.body || "-"
           }
         />
+        <NumberField source="rating" label="Rating" />
         <FunctionField
           label="Image"
           render={(record: { image?: string }) =>

@@ -26,9 +26,11 @@ import {
   ColorImageList,
 } from "./resources/color-images";
 import { BadgeCreate, BadgeEdit, BadgeList } from "./resources/badges";
+import { CouponCreate, CouponEdit, CouponList } from "./resources/coupons";
 import { UserEdit, UserList } from "./resources/users";
 import { OrderList, OrderShow } from "./resources/orders";
 import { CommentList } from "./resources/comments";
+import { ReturnRequestList } from "./resources/return-requests";
 import { AppLayout } from "./layouts/AppLayout";
 import { adminDarkTheme, adminLightTheme } from "./theme/adminTheme";
 import { Dashboard } from "./pages/Dashboard";
@@ -79,12 +81,19 @@ function App() {
           edit={BadgeEdit}
         />
         <Resource
+          name="coupon"
+          list={CouponList}
+          create={CouponCreate}
+          edit={CouponEdit}
+        />
+        <Resource
           name="product"
           list={ProductList}
           create={ProductCreate}
           edit={ProductEdit}
         />
         <Resource name="order" list={OrderList} show={OrderShow} />
+        <Resource name="return-request" list={ReturnRequestList} options={{ label: "Returns" }} />
         <Resource name="users" list={UserList} edit={UserEdit} />
         <Resource name="comment" list={CommentList} />
         <CustomRoutes>

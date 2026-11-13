@@ -6,10 +6,12 @@ import InventoryIcon from "@mui/icons-material/Inventory";
 import BrandingWatermarkIcon from "@mui/icons-material/BrandingWatermark";
 import PaletteIcon from "@mui/icons-material/Palette";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PeopleIcon from "@mui/icons-material/People";
 import RateReviewIcon from "@mui/icons-material/RateReview";
+import AssignmentReturnIcon from "@mui/icons-material/AssignmentReturn";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import HomeIcon from "@mui/icons-material/Home";
 import ImageIcon from "@mui/icons-material/Image";
@@ -73,6 +75,16 @@ export const Menu = () => (
         to="/order"
         primaryText="Orders"
         leftIcon={<ShoppingCartIcon />}
+      />
+      <RaMenu.Item
+        to="/return-request"
+        primaryText="Returns"
+        leftIcon={<AssignmentReturnIcon />}
+      />
+      <RaMenu.Item
+        to="/coupon"
+        primaryText="Coupons"
+        leftIcon={<ConfirmationNumberIcon />}
       />
 
       <ListSubheader sx={sectionHeaderSx}>Customers</ListSubheader>
